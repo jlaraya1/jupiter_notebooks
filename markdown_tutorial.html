@@ -193,10 +193,10 @@ summary {
 <pre><code>
 rm(list = ls())
 
-#################
+
 #import Libraries
 library(&quot;plyr&quot;)
-################
+
 
 source(&quot;/home/jlaraya/Documents/BaseEspejo/codigo/funciones.R&quot;)
 ruta&lt;-&quot;/home/jlaraya/Documents/BaseEspejo/reportesDiariosYMensuales/datos&quot;
@@ -255,6 +255,245 @@ if(opcion==1){Calculo= &quot;promedio&quot;}
 if(opcion==4){Calculo= &quot;total&quot;}
 tipoRep&lt;-&quot;todo&quot;
 reportesD_Q_M_Y(lista,opcion,reso,resol,guardeEn,Calculo,prefijo,tipoRep)</code></pre>
+<p>Cálculo de Promedios quincenales de temperatura Cálculo de Totales diarios de lluvia horaria</p>
+<pre><code>guardeEn &lt;-&quot;../resultadosWeek/&quot;
+prefijo=&quot;Auto_Semanal-&quot;
+resol&lt;-&quot;week&quot;
+reportesD_Q_M_Y(lista,opcion,reso,resol,guardeEn,Calculo,prefijo,tipoRep)</code></pre>
+<p>Cálculo de Promedios mensuales de temperatura Cálculo de Totales diarios de lluvia horaria</p>
+<pre><code>guardeEn &lt;-&quot;../resultadosMes/&quot;
+prefijo=&quot;Auto_Mensual-&quot;
+resol&lt;-&quot;month&quot;
+reportesD_Q_M_Y(lista,opcion,reso,resol,guardeEn,Calculo,prefijo,tipoRep)</code></pre>
+<p>Cálculo de Promedios anuales de temperatura Cálculo de Totales diarios de lluvia horaria</p>
+<pre><code>guardeEn &lt;-&quot;../resultadosYear/&quot;
+prefijo=&quot;Auto_anual-&quot;
+resol&lt;-&quot;year&quot;
+reportesD_Q_M_Y(lista,opcion,reso,resol,guardeEn,Calculo,prefijo,tipoRep)</code></pre>
+<div id="section" class="section level39">
+<p></p>
+</div>
+</div>
+<div id="definiendo-la-matriz-espacio-temporal" class="section level1">
+<h1>Definiendo la matriz espacio-temporal:</h1>
+<div id="section-1" class="section level39">
+<p></p>
+<pre><code>if(opcion==1){# para temperatura horaria se pueden rellenar los datos horarios...
+              par_time=&quot;tempH_x&quot;
+              ruta&lt;-&quot;/home/jlaraya/Documents/BaseEspejo/reportesDiariosYMensuales/datos3&quot;
+              setwd(ruta);rint(dir());files=dir()
+              files=selectSomeFiles(files,1,11,&quot;ejeCompleto&quot;,&quot;.txt&quot;)
+              fechas=read.table(files[1],header=TRUE,row.names=NULL)
+              fechas=subset(fechas,select=HORA:AGNO)
+              datosAll=MegaMatrix(ruta,files,9)   #OJO: verificar que la columna 9 es la correcta, cambié esto posteriormente 
+}</code></pre>
+<p>Para el caso de lluvia:</p>
+<pre><code>
+if(opcion==4){# para precipiación se pueden rellenar los datos totales mensuales
+              par_time=&quot;lluvMes_x&quot;
+              ruta&lt;-&quot;/home/jlaraya/Documents/BaseEspejo/reportesDiariosYMensuales/resultadosMes&quot;
+              setwd(ruta);print(dir());files=dir()
+              files=selectSomeFiles(files,1,19,&quot;-total-Auto_Mensual&quot;,&quot;.txt&quot;)
+              f=read.table(files[1],header=TRUE,row.names=NULL)
+              fechas=as.Date(as.character(f$redond))
+              fechas=as.data.frame(cbind(day=format(fechas,&quot;%d&quot;),month=format(fechas,&quot;%m&quot;),year=format(fechas,&quot;%Y&quot;)))
+              datosAll=MegaMatrix(ruta,files,7)
+}</code></pre>
+<p>Se salvan los resultados…</p>
+<pre><code>write.table(datosAll, file=paste(&quot;../datosTodos/datosAll_&quot;,par_time,&quot;.txt&quot;,sep=&quot;&quot;),row.names = F,col.names=TRUE)
+write.table(fechas, file=paste(&quot;../datosTodos/fechas_datosAll_&quot;,par_time,&quot;.txt&quot;,sep=&quot;&quot;),row.names = F,col.names=TRUE)</code></pre>
+<p>Extrayendo grupos de datos basados en criterio de distancia:</p>
+<pre><code>library(maps)
+library(mapdata)
+library(fields)
+data(worldMapEnv)
+
+
+
+ruta&lt;-&quot;/home/jlaraya//Documents/BaseEspejo/codigo/&quot;
+setwd(ruta)
+nomina=read.csv(&quot;nomina_final.txt&quot;,sep=&quot;&quot;)
+nomina$LONDEC=-1*nomina$LONDEC
+###########
+#parametros
+TIPO=&quot;U&quot;
+###########
+
+latLon=nomina[which(nomina$TIPO==TIPO),]
+rownames(latLon)=paste(&quot;h&quot;,as.character(latLon$CUENCA),as.character(latLon$ESTACION),sep=&quot;_&quot;)
+latLon2=subset(latLon,select=c(&quot;LONDEC&quot;,&quot;LATDEC&quot;,&quot;ALTITUD&quot;))
+write.table(latLon2, file=&quot;latLon2.txt&quot;,row.names = T,col.names=T)
+
+####################
+latDelta_inf=0.0
+latDelta_sup=0.0
+lonDelta_inf=0.0
+lonDelta_sup=0.0
+#####################
+
+pdf(&quot;map.pdf&quot;)
+map('world',xlim=c(min(latLon$LONDEC)-lonDelta_inf,max(latLon$LONDEC)+lonDelta_sup),ylim=c( (min(latLon$LATDEC)-latDelta_inf), (max(latLon$LATDEC)+latDelta_sup)),boundary=TRUE, fill=TRUE,col=&quot;yellow&quot;)
+points(as.numeric(as.character(latLon2$LONDEC)), as.numeric(as.character(latLon2$LATDEC)), pch=16, col=&quot;red&quot;, cex=0.5) 
+map.axes(cex.axis=0.6)
+title(paste(&quot;Distribución espacial de estaciones meteorológicas tipo&quot;,TIPO,sep=&quot; &quot;))
+dev.off()
+</code></pre>
+<p>GRUPOS POR DISTANCIAS</p>
+<pre><code>ruta&lt;-&quot;/home/jlaraya//Documents/BaseEspejo/reportesDiariosYMensuales/grupos_datos/&quot;
+setwd(ruta)
+dist_m = CalcDists(latLon2)
+write.table(dist_m, file=&quot;matriz_distancias.txt&quot;,row.names = T,col.names=T)
+#selecting the clusters of close station from the distance matrix...R&lt;60
+########################
+#DEFINA RADIO DE INFLUENCIA
+radio_km=60
+n_min=0
+########################
+inventarioGrupos=groups_reports(dist_m,radio_km,n_min)
+inventarioGrupos=as.data.frame(inventarioGrupos)
+write.table(inventarioGrupos, file=&quot;inventarioGrupos.txt&quot;,row.names = F,col.names=TRUE)</code></pre>
+<p>usando los datos de la corrida:</p>
+<pre><code>ruta&lt;-&quot;/home/jlaraya//Documents/BaseEspejo/reportesDiariosYMensuales/datosTodos/&quot;
+setwd(ruta)
+files=dir()
+
+data=read.table(selectSomeFiles(files,1,8,&quot;datosAll&quot;,&quot;.txt&quot;),header=T)
+fechas=read.table(selectSomeFiles(files,1,6,&quot;fechas&quot;,&quot;.txt&quot;),header=T)
+write.table(fechas, file=&quot;fechas.txt&quot;,row.names = F,col.names=TRUE)
+data=data[,2:ncol(data)]
+data2=na.omit(data)
+print(dim(data))
+print(dim(data2))
+
+seriesNomina=paste(&quot;h&quot;,nomina$CUENCA,nomina$ESTACION,sep=&quot;_&quot;)  #series de toda la nomina
+seriesActuales=names(data)#las series del lote de datos que se extrajo de la base de datos
+seriesGrupos=as.character(inventarioGrupos$nameFile)  #Grupos de estaciones calculados a partir de la nómina</code></pre>
+<p>nos vamos a la carpeta de los grupos:</p>
+<pre><code>ruta&lt;-&quot;/home/jlaraya//Documents/BaseEspejo/reportesDiariosYMensuales/grupos_datos/&quot;
+setwd(ruta)
+files=dir()
+files=selectSomeFiles(files,1,9,&quot;closeStat&quot;,&quot;.txt&quot;)  # coincide con inventarioGrupos</code></pre>
+<p>seriesActuales:estaciones existentes en la megamatriz de datos…</p>
+<pre><code>seriesEnNomina=seriesNomina[na.omit(match(seriesNomina,seriesActuales))] #las estaciones da la megamatriz que si estan en la nómina
+seriesNO_nomina=seriesActuales[which(is.na(match(seriesActuales,seriesNomina)))]  #las estaciones de la megamatriz que No están en la nómina</code></pre>
+<p>¿cuales grupos coinciden con los datos que se van a analizar?</p>
+<pre><code>Los grupos que corresponden con las columnas del archivo &quot;data&quot; o &quot;series actuales&quot;
+grupos_en_seriesActuales=seriesActuales[na.omit(match(seriesGrupos,seriesActuales))]</code></pre>
+<p>los grupos que no corresponden con las columnas del archivo “data” o “series actuales”</p>
+<pre><code>grupos_noen_seriesActuales=seriesGrupos[which(is.na(match(seriesGrupos,seriesActuales)))]</code></pre>
+<p>las series actuales que están en grupos:</p>
+<pre><code>seriesActuales_en_grupos=seriesGrupos[na.omit(match(seriesActuales,seriesGrupos))]</code></pre>
+<p>las series actuales que no están en grupos, quiere decir que estas estacioes no se pueden rellenar con los grupos propuestos</p>
+<pre><code>seriesActuales_noen_grupos=seriesActuales[which(is.na(match(seriesActuales,seriesGrupos)))]</code></pre>
+<p>Guardando resultados:</p>
+<pre><code>write.table(seriesEnNomina, file=&quot;seriesEnNomina.txt&quot;,row.names = F,col.names=TRUE)
+write.table(seriesNO_nomina, file=&quot;seriesNO_nomina.txt&quot;,row.names = F,col.names=TRUE)
+write.table(grupos_en_seriesActuales, file=&quot;grupos_en_seriesActuales.txt&quot;,row.names = F,col.names=TRUE)
+write.table(grupos_noen_seriesActuales, file=&quot;grupos_noen_seriesActuales.txt&quot;,row.names = F,col.names=TRUE)
+write.table(seriesActuales_en_grupos, file=&quot;seriesActuales_en_grupos.txt&quot;,row.names = F,col.names=TRUE)
+write.table(seriesActuales_noen_grupos, file=&quot;seriesActuales_noen_grupos.txt&quot;,row.names = F,col.names=TRUE)
+
+x=strsplit(files[1],&quot;_&quot;)[[1]][1:2]
+prefijo=paste(x[1],x[2],sep=&quot;_&quot;)
+
+for(i in seq(1,length(grupos_en_seriesActuales))){print(i)
+                                                  s=paste(prefijo,&quot;_&quot;,grupos_en_seriesActuales[i],&quot;.txt&quot;,sep=&quot;&quot;)
+                                                  group=read.table(s,header=TRUE)
+                                                  m=na.omit(match(rownames(group),seriesActuales))
+                                                  datos_group=subset(data,select=seriesActuales[m])
+                                                  print(names(datos_group))
+                                                  write.table(datos_group, file=paste(&quot;datos_&quot;,prefijo,rownames(group)[1],&quot;.txt&quot;,sep=&quot;&quot;),row.names = F,col.names=TRUE)
+                                                  }
+</code></pre>
+<p>Estudio de correlaciones de los grupos r&gt;60Km</p>
+<p>Parametros</p>
+<pre><code>if(opcion==1){ini=-12;fin=12}  #datos horarios de temperatura
+if(opcion==4){ini=-3;fin=3}    #datos mensuales de precipitación
+cor_umbral=0.8
+mpc_umbral=20</code></pre>
+<pre><code>ruta&lt;-&quot;/home/jlaraya//Documents/BaseEspejo/reportesDiariosYMensuales/grupos_datos/&quot;
+setwd(ruta)
+files=dir()
+files=selectSomeFiles(files,1,5,&quot;datos&quot;,&quot;.txt&quot;) 
+fechas=read.table(&quot;fechas.txt&quot;,header=T)
+
+saneg=read.table(&quot;seriesActuales_noen_grupos.txt&quot;,header=T);saneg=as.character(saneg[,1])
+pref=paste(strsplit(files[1],&quot;_&quot;)[[1]][1],&quot;_&quot;,strsplit(files[1],&quot;_&quot;)[[1]][2],&quot;_&quot;,strsplit(files[1],&quot;_&quot;)[[1]][3],&quot;_&quot;,sep=&quot;&quot;)
+saneg2=paste(pref,saneg,&quot;.txt&quot;,sep=&quot;&quot;)
+
+sanegAll=NULL
+quantiles_antes=NULL
+quantiles_despues=NULL
+strt=Sys.time()
+reporteAll=NULL
+for(i in seq(1,length(files))){dat=read.table(files[i],header=T)
+                               if(ncol(dat)&lt;3){sanegAll=append(sanegAll,files[i]);next }
+                               print(files[i])
+                               dat2=acotandoDatos(fechas,dat,100,20)
+                               sequ=NULL;for(jj in seq(1,ncol(dat2))){x=strsplit(names(dat2)[jj],&quot;_&quot;)[[1]][1];sequ=append(sequ,x)}
+                               fechas2=dat2[,which(sequ!=&quot;h&quot;)]
+                               #fechas2=subset(dat2,select=HORA:AGNO)
+                               dat2=dat2[,which(sequ==&quot;h&quot;)]
+                               if(ncol(dat2)&lt;3){sanegAll=append(sanegAll,files[i]);next }
+                               #Eliminando los -9 y outliers individuales por serie:
+                               ro=remove_mv_outliers(dat2,-9,-4)
+                               dat2=as.data.frame(ro[[1]]);dat2_IA=as.data.frame(ro[[2]])
+                               ro2=remove_mv_outliers_group(dat2,dat2_IA,-4)
+                               dat2=as.data.frame(ro2[[1]]);dat2_IA=as.data.frame(ro2[[2]])
+                               #calculo de matriz de trayectoria
+                               trayect_matrix=LagCorMatrix(dat2,ini,fin)
+                               retardo_0=ind_00(ncol(dat2),fin)
+                               print(&quot;Dimensiones de matriz de trayectoria:&quot;);print(dim(trayect_matrix))
+                               #s=which(paste(names(i)[files],&quot;_0&quot;,sep=&quot;&quot;)==names(trayect_matrix)[retardo_0])
+                               reference_station=names(trayect_matrix)[retardo_0[1]]  # el nombre de la estación de referencia
+                               reference_station_dat=trayect_matrix[,reference_station] #los datos de la estación de referencia
+                               print(&quot;Estación de referencia:&quot;);print(reference_station)
+                               c2=as.data.frame(cor(na.omit(trayect_matrix)))
+                               s2=which(paste(names(dat)[1],&quot;_0&quot;,sep=&quot;&quot;)==names(trayect_matrix))
+                               bestCor2=names(c2)[which(c2[,s2]&gt;cor_umbral &amp; c2[,s2]&lt;1 )]
+                               bestCor2=append(reference_station,bestCor2)
+                               dat2=subset(trayect_matrix,select=bestCor2)
+                               print(&quot;Dimensiones de matriz de trayectoria reducidas:&quot;);print(dim(dat2))
+                               if(ncol(dat2)&lt;3){sanegAll=append(sanegAll,files[i]);next }
+                               #Graficando correlaciones parciales temporales y espaciales...
+
+                               correlaciones=corCruPar(dat2,cor_umbral,&quot;pearson&quot;,&quot;no&quot;)
+                               corCru=correlaciones[[1]];corPar=correlaciones[[2]]
+
+                               correlaciones_dif=corCruPar(dat2,cor_umbral,&quot;pearson&quot;,&quot;si&quot;)
+                               corCruDif=correlaciones_dif[[1]];corParDif=correlaciones_dif[[2]]
+
+                               corCruPlot=subset(corCru,select=names(corPar)) #ordenando por columnas ambas
+                               corCruPlot= corCruPlot[1,]
+
+                              corCruPlotDif=subset(corCruDif,select=names(corParDif)) #ordenando por columnas ambas
+                              corCruPlotDif= corCruPlotDif[1,]
+
+                              pdf(paste(&quot;corPar_corCru&quot;,files[i],&quot;.pdf&quot;,sep=&quot;&quot;))
+                              par(mfrow=c(2,1)) 
+                              plot(corPar,main=paste(&quot;Datos sin transformación\nEstación de referencia:&quot;,names(dat2[1]),sep=&quot;&quot;),xaxt=&quot;n&quot;,xlab=&quot;&quot;,ylab=&quot;Correlación&quot;,type=&quot;b&quot;,col=&quot;red&quot;)
+                              xtick=seq(1, length(corPar),1)
+                              axis(side=1, at=xtick, labels = names(corPar),las=2, cex.axis=0.7)
+                              lines(corCruPlot,col=&quot;green&quot;,type=&quot;l&quot;,cex=0.8)
+                              legend(&quot;topright&quot;,c(&quot;Correlación cruzada&quot;,&quot;Correlación parcial &quot;),lty=c(1,1),lwd=c(1,1),col=c(&quot;red&quot;,&quot;green&quot;),horiz=TRUE,cex=0.7)
+                              plot(corParDif,main=paste(&quot;Datos transformados usando diferencias\nEstación de referencia:&quot;,names(dat2[1]),sep=&quot;&quot;),xaxt=&quot;n&quot;,xlab=&quot;&quot;,ylab=&quot;Correlación&quot;,type=&quot;b&quot;,col=&quot;red&quot;)
+                              xtick=seq(1, length(corParDif),1)
+                              axis(side=1, at=xtick, labels = names(corParDif),las=2, cex.axis=0.7)
+                              lines(corCruPlotDif,col=&quot;green&quot;,type=&quot;l&quot;,cex=0.8)
+                              legend(&quot;topright&quot;,c(&quot;Correlación cruzada diferencias&quot;,&quot;Correlación parcial diferencias&quot;),lty=c(1,1),lwd=c(1,1),col=c(&quot;red&quot;,&quot;green&quot;),horiz=TRUE,cex=0.7)
+                              boxplot(dat2,las = 2,col=&quot;yellow&quot;,main=paste(&quot;Comparación de series de retardo\nEstación de referencia:&quot;,names(dat2[1]),sep=&quot;&quot;),cex=0.2,cex.lab=1.0,cex.axis=0.75,main=&quot;Después del control de calidad, sin relleno&quot;,xlab=&quot;&quot;,ylab=&quot;Parámetro Meteorológico&quot;)
+                              dev.off()
+                              dat2=as.data.frame(cbind(fechas2,dat2))
+                              write.table(dat2,quote=FALSE,file=paste(&quot;Rellenar_con_ePCA_&quot;,files[i],sep=&quot;&quot;))
+                              reporte=cbind(nombre_archivo=files[i],no_fil_trayMatrix=nrow(trayect_matrix),no_fil__trayMatrix=ncol(trayect_matrix),no_fil_trayMatrix_red=nrow(dat2),no_fil__trayMatrix_red=ncol(dat2))
+                              reporteAll=rbind(reporteAll,reporte)
+                              }
+write.table(fechas,quote=FALSE,file=&quot;fechas.txt&quot;)
+write.table(reporteAll,quote=FALSE,file=&quot;reporteAll.txt&quot;)
+sanegAll=append(sanegAll,saneg2)
+write.table(sanegAll,quote=FALSE,file=&quot;estacionesNoRellenablesUsandoEstacionesCercanas.txt&quot;)</code></pre>
+<p>Relleno de datos</p>
+</div>
 </div>
 
 
